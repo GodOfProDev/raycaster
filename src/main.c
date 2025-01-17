@@ -54,7 +54,9 @@ void init_game() {
 		ERROR_EXIT("Could not create Renderer: %s\n", SDL_GetError());
 	}
 
-	player.speed = 25.0f;
+	player.x = SCREEN_WIDTH / 2.0f;
+	player.y = SCREEN_HEIGHT / 2.0f;
+	player.speed = 1000;
 	game_state.is_running = true;
 }
 
@@ -68,19 +70,18 @@ void process_events() {
 		case SDL_KEYDOWN:
 			switch (e.key.keysym.sym) {
 			case SDLK_UP:
-				player.y -= player.speed;
+				player.y -= player.speed * game_state.delta_time;
 				break;
 			case SDLK_DOWN:
-				player.y += player.speed;
+				player.y += player.speed * game_state.delta_time;
 				break;
 			case SDLK_LEFT:
-				player.x -= player.speed;
+				player.x -= player.speed * game_state.delta_time;
 				break;
 			case SDLK_RIGHT:
-				player.x += player.speed;
+				player.x += player.speed * game_state.delta_time;
 				break;
 			}
-			break;
 		}
 	}
 }
@@ -193,7 +194,7 @@ void render() {
 
 			int cell = cell_grid[y * MAP_WIDTH + x];
 			if (cell) {
-				SDL_SetRenderDrawColor(rd, 0, 177, 0, 255); // Red Square
+				SDL_SetRenderDrawColor(rd, 0, 177, 0, 255);
 				SDL_RenderFillRect(rd, &grid_cell);
 				SDL_SetRenderDrawColor(rd, 255, 255, 255, 255); // White Border
 			}
@@ -208,8 +209,11 @@ void render() {
 	SDL_SetRenderDrawColor(rd, 0, 255, 0, 255);
 	DrawFilledCircle(rd, game_state.mouse_x, game_state.mouse_y, 4);
 
-	float ray_start_x = player.x;
-	float ray_start_y = player.y;
+	float player_grid_x = (player.x / CELL_WIDTH);
+	float player_grid_y = (player.y / CELL_HEIGHT);
+
+	float ray_start_x = player_grid_x;
+	float ray_start_y = player_grid_y;
 	float ray_dir_x = (game_state.mouse_x - player.x);
 	float ray_dir_y = (game_state.mouse_y - player.y);
 
@@ -222,10 +226,10 @@ void render() {
 		ray_dir_y = ray_dir_y / length;
 	}
 
-	float ray_unit_step_size_x = sqrt(1 + (ray_dir_y * ray_dir_y) / (ray_dir_x * ray_dir_x));
-	float ray_unit_step_size_y = sqrt(1 + (ray_dir_x * ray_dir_x) / (ray_dir_y * ray_dir_y));
-	int map_check_x = (int)ray_start_x;
-	int map_check_y = (int)ray_start_y;
+	float ray_unit_step_size_x = (ray_dir_x == 0) ? 1e30 : sqrt(1 + (ray_dir_y * ray_dir_y) / (ray_dir_x * ray_dir_x));
+	float ray_unit_step_size_y = (ray_dir_x == 0) ? 1e30 : sqrt(1 + (ray_dir_x * ray_dir_x) / (ray_dir_y * ray_dir_y));
+	int map_check_x = player_grid_x;
+	int map_check_y = player_grid_y;
 
 	float ray_length_x;
 	float ray_length_y;
@@ -242,8 +246,9 @@ void render() {
 		((float)(map_check_y + 1) - ray_start_y) * ray_unit_step_size_y;
 
 	bool tile_found = false;
-	float max_distance = 100.0f;
+	float max_distance = 100;
 	float distance = 0.0f;
+
 	while (!tile_found && distance < max_distance) {
 		if (ray_length_x < ray_length_y) {
 			map_check_x += step_x;
@@ -256,14 +261,15 @@ void render() {
 			ray_length_y += ray_unit_step_size_y;
 		}
 
-		if (map_check_x >= 0 && map_check_x < MAP_WIDTH && map_check_y >= 0 && map_check_y < MAP_HEIGHT)
+		if (map_check_x >= 0 && map_check_x < MAP_WIDTH && map_check_y >= 0 && map_check_y < MAP_HEIGHT) {
 			if (cell_grid[map_check_y * MAP_WIDTH + map_check_x] == 1) {
 				tile_found = true;
 			}
+		}
 	}
 
-	float intersection_x = ray_start_x + ray_dir_x * distance;
-	float intersection_y = ray_start_y + ray_dir_y * distance;
+	float intersection_x = (ray_start_x + ray_dir_x * distance) * CELL_WIDTH;
+	float intersection_y = (ray_start_y + ray_dir_y * distance) * CELL_HEIGHT;
 
 	if (game_state.is_left_click) {
 		SDL_SetRenderDrawColor(rd, 255, 255, 255, 255);
@@ -271,7 +277,7 @@ void render() {
 
 		if (tile_found) {
 			SDL_SetRenderDrawColor(rd, 255, 255, 0, 255);
-			DrawFilledCircle(rd, intersection_x * CELL_WIDTH, intersection_y * CELL_HEIGHT, 4);
+			DrawFilledCircle(rd, intersection_x, intersection_y, 4);
 		}
 	}
 
