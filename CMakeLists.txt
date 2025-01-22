@@ -15,7 +15,7 @@ set(SOURCES
  "src/types.h")
 
 # Add your source files
-add_executable(raycast ${SOURCES})
+add_executable(raycast ${SOURCES} )
 
 # Add the path to SDL2 headers
 target_include_directories(raycast PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/vendor/SDL/include)
@@ -34,4 +34,15 @@ if(WIN32)
                 "${CMAKE_CURRENT_SOURCE_DIR}/vendor/SDL/lib/x64/${DLL}"
                 $<TARGET_FILE_DIR:raycast>)
     endforeach()
+endif()
+
+if(MSVC)
+    # Enable debug information generation
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Zi")
+    
+    # Enable PDB generation
+    set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} /DEBUG /PDBALTPATH:%_PDB%")
+    
+    # Disable optimization in Debug mode for better debugging experience
+    string(REPLACE "/O2" "/Od" CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
 endif()
